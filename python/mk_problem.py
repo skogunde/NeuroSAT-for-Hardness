@@ -14,7 +14,7 @@
 # ==============================================================================
 
 import numpy as np
-import math
+
 
 # TODO(dhs): duplication
 def ilit_to_var_sign(x):
@@ -23,6 +23,7 @@ def ilit_to_var_sign(x):
     sign = x < 0
     return var, sign
 
+
 # TODO(dhs): duplication
 def ilit_to_vlit(x, n_vars):
     assert(x != 0)
@@ -30,8 +31,9 @@ def ilit_to_vlit(x, n_vars):
     if sign: return var + n_vars
     else: return var
 
+
 class Problem(object):
-    def __init__(self, n_vars, iclauses, is_sat, n_cells_per_batch, all_dimacs):
+    def __init__(self, n_vars, iclauses, is_time, n_cells_per_batch, all_dimacs):
         self.n_vars = n_vars
         self.n_lits = 2 * n_vars
         self.n_clauses = len(iclauses)
@@ -39,7 +41,7 @@ class Problem(object):
         self.n_cells = sum(n_cells_per_batch)
         self.n_cells_per_batch = n_cells_per_batch
 
-        self.is_sat = is_sat
+        self.is_time = is_time
         self.compute_L_unpack(iclauses)
 
         # will be a list of None for training problems
@@ -56,30 +58,33 @@ class Problem(object):
 
         assert(cell == self.n_cells)
 
+
 def shift_ilit(x, offset):
     assert(x != 0)
     if x > 0: return x + offset
     else:     return x - offset
 
+
 def shift_iclauses(iclauses, offset):
     return [[shift_ilit(x, offset) for x in iclause] for iclause in iclauses]
 
+
 def mk_batch_problem(problems):
     all_iclauses = []
-    all_is_sat = []
+    all_is_time = []
     all_n_cells = []
     all_dimacs = []
     offset = 0
 
     prev_n_vars = None
-    for dimacs, n_vars, iclauses, is_sat in problems:
+    for dimacs, n_vars, iclauses, is_time in problems:
         assert(prev_n_vars is None or n_vars == prev_n_vars)
         prev_n_vars = n_vars
 
         all_iclauses.extend(shift_iclauses(iclauses, offset))
-        all_is_sat.append(is_sat)
+        all_is_time.append(is_time)
         all_n_cells.append(sum([len(iclause) for iclause in iclauses]))
         all_dimacs.append(dimacs)
         offset += n_vars
 
-    return Problem(offset, all_iclauses, all_is_sat, all_n_cells, all_dimacs)
+    return Problem(offset, all_iclauses, all_is_time, all_n_cells, all_dimacs)

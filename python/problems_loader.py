@@ -15,7 +15,8 @@
 
 import os
 import pickle
-import mk_problem
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+
 
 class ProblemsLoader(object):
     def __init__(self, filenames):
@@ -41,6 +42,7 @@ class ProblemsLoader(object):
 
     def reset(self):
         self.next_file_num = 0
+
 
 def init_problems_loader(dirname):
     return ProblemsLoader([dirname + "/" + f for f in os.listdir(dirname)])

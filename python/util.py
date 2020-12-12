@@ -13,10 +13,15 @@
 # limitations under the License.
 # ==============================================================================
 
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+
 import tensorflow as tf
+
 
 def repeat_end(val, n, k):
     return [val for i in range(n)] + [k]
+
 
 def reduce_with(vec, sizes, fn, final_shape):
     n_groups = tf.shape(sizes)[0]
@@ -28,6 +33,7 @@ def reduce_with(vec, sizes, fn, final_shape):
                          [0, start_array, end_array])[2].stack()
 
     return tf.reshape(result, final_shape)
+
 
 def decode_final_reducer(reducer):
     if reducer == "min":
@@ -41,6 +47,7 @@ def decode_final_reducer(reducer):
     else:
         raise Exception("Expecting min, mean, or max")
 
+
 def decode_msg_reducer(reducer):
     if reducer == "min":
         return (lambda x: tf.reduce_min(tf.concat([x, tf.zeros([1, tf.shape(x)[1]])], axis=0), axis=0))
@@ -52,6 +59,7 @@ def decode_msg_reducer(reducer):
         return (lambda x: tf.reduce_max(tf.concat([x, tf.zeros([1, tf.shape(x)[1]])], axis=0), axis=0))
     else:
         raise Exception("Expecting min, mean, or max")
+
 
 def decode_transfer_fn(transfer_fn):
     if transfer_fn == "relu": return tf.nn.relu

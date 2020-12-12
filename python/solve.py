@@ -13,17 +13,12 @@
 # limitations under the License.
 # ==============================================================================
 
-import math
-import numpy as np
-import random
-import datetime
-import subprocess
 import pickle
-import sys
 import os
 import argparse
 from options import add_neurosat_options
 from neurosat import NeuroSAT
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 parser = argparse.ArgumentParser()
 add_neurosat_options(parser)

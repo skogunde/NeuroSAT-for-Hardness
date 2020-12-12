@@ -13,11 +13,11 @@
 # limitations under the License.
 # ==============================================================================
 
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+
 import tensorflow as tf
 import numpy as np
-import math
-import random
-import os
 import time
 from confusion import ConfusionMatrix
 from problems_loader import init_problems_loader
@@ -25,6 +25,7 @@ from mlp import MLP
 from util import repeat_end, decode_final_reducer, decode_transfer_fn
 from tensorflow.contrib.rnn import LSTMStateTuple
 from sklearn.cluster import KMeans
+
 
 class NeuroSAT(object):
     def __init__(self, opts):
@@ -63,10 +64,10 @@ class NeuroSAT(object):
         self.n_clauses = tf.placeholder(tf.int32, shape=[], name='n_clauses')
 
         self.L_unpack = tf.sparse_placeholder(tf.float32, shape=[None, None], name='L_unpack')
-        self.is_sat = tf.placeholder(tf.bool, shape=[None], name='is_sat')
+        self.is_time = tf.placeholder(tf.float32, shape=[None], name='is_time')
 
         # useful helpers
-        self.n_batches = tf.shape(self.is_sat)[0]
+        self.n_batches = tf.shape(self.is_time)[0]
         self.n_vars_per_batch = tf.div(self.n_vars, self.n_batches)
 
     def while_cond(self, i, L_state, C_state):
@@ -114,7 +115,7 @@ class NeuroSAT(object):
             self.logits = self.final_reducer(self.all_votes_batched) + self.vote_bias
 
     def compute_cost(self):
-        self.predict_costs = tf.nn.sigmoid_cross_entropy_with_logits(logits=self.logits, labels=tf.cast(self.is_sat, tf.float32))
+        self.predict_costs = tf.nn.sigmoid_cross_entropy_with_logits(logits=self.logits, labels=self.is_time)
         self.predict_cost = tf.reduce_mean(self.predict_costs)
 
         with tf.name_scope('l2') as scope:
@@ -182,7 +183,7 @@ class NeuroSAT(object):
                                                  values=np.ones(problem.L_unpack_indices.shape[0]),
                                                  dense_shape=[problem.n_lits, problem.n_clauses])
 
-        d[self.is_sat] = problem.is_sat
+        d[self.is_time] = problem.is_time
         return d
 
     def train_epoch(self, epoch):
@@ -199,7 +200,7 @@ class NeuroSAT(object):
             d = self.build_feed_dict(problem)
             _, logits, cost = self.sess.run([self.apply_gradients, self.logits, self.cost], feed_dict=d)
             epoch_train_cost += cost
-            epoch_train_mat.update(problem.is_sat, logits > 0)
+            epoch_train_mat.update(problem.is_time, logits > 0)
 
         epoch_train_cost /= len(train_problems)
         epoch_train_mat = epoch_train_mat.get_percentages()
@@ -224,7 +225,7 @@ class NeuroSAT(object):
                 d = self.build_feed_dict(problem)
                 logits, cost = self.sess.run([self.logits, self.cost], feed_dict=d)
                 epoch_test_cost += cost
-                epoch_test_mat.update(problem.is_sat, logits > 0)
+                epoch_test_mat.update(problem.is_time, logits > 0)
 
             epoch_test_cost /= len(test_problems)
             epoch_test_mat = epoch_test_mat.get_percentages()
@@ -238,14 +239,14 @@ class NeuroSAT(object):
             if vlit < problem.n_vars: return vlit + problem.n_vars
             else: return vlit - problem.n_vars
 
-        n_batches = len(problem.is_sat)
+        n_batches = len(problem.is_time)
         n_vars_per_batch = problem.n_vars // n_batches
 
         d = self.build_feed_dict(problem)
         all_votes, final_lits, logits, costs = self.sess.run([self.all_votes, self.final_lits, self.logits, self.predict_costs], feed_dict=d)
 
         solutions = []
-        for batch in range(len(problem.is_sat)):
+        for batch in range(len(problem.is_time)):
             decode_cheap_A = (lambda vlit: all_votes[vlit, 0] > all_votes[flip_vlit(vlit), 0])
             decode_cheap_B = (lambda vlit: not decode_cheap_A(vlit))
 

@@ -13,16 +13,13 @@
 # limitations under the License.
 # ==============================================================================
 
-import math
 import os
-import numpy as np
-import tensorflow as tf
-import random
 import pickle
 import argparse
-import sys
 from solver import solve_sat
 from mk_problem import mk_batch_problem
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+
 
 def parse_dimacs(filename):
     with open(filename, 'r') as f:
@@ -36,10 +33,12 @@ def parse_dimacs(filename):
     iclauses = [[int(s) for s in line.strip().split(" ")[:-1]] for line in lines[i+1:]]
     return n_vars, iclauses
 
+
 def mk_dataset_filename(opts, n_batches):
     dimacs_path = opts.dimacs_dir.split("/")
     dimacs_dir = dimacs_path[-1] if dimacs_path[-1] != "" else dimacs_path[-2]
     return "%s/data_dir=%s_npb=%d_nb=%d.pkl" % (opts.out_dir, dimacs_dir, opts.max_nodes_per_batch, n_batches)
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument('dimacs_dir', action='store', type=str)
@@ -53,6 +52,7 @@ opts = parser.parse_args()
 problems = []
 batches = []
 n_nodes_in_batch = 0
+avg_time = []
 
 filenames = os.listdir(opts.dimacs_dir)
 
@@ -89,13 +89,19 @@ for filename in filenames:
 
     prev_n_vars = n_vars
 
-    is_sat, stats = solve_sat(n_vars, iclauses)
-    problems.append((filename, n_vars, iclauses, is_sat))
+    print('Number of Variables =', n_vars, '\nClauses =', iclauses)
+    is_sat, is_time, stats = solve_sat(n_vars, iclauses)
+    print('Time =', is_time, 'secs')
+    avg_time.append(is_time)
+    print('Satisfiability =', is_sat, '\n')
+
+    problems.append((filename, n_vars, iclauses, is_time))
     n_nodes_in_batch += n_nodes
 
 if len(problems) > 0:
     batches.append(mk_batch_problem(problems))
     print("batch %d done (%d vars, %d problems)...\n" % (len(batches), n_vars, len(problems)))
+    print("***********************************************************************************************************")
     del problems[:]
 
 # create directory
@@ -104,5 +110,6 @@ if not os.path.exists(opts.out_dir):
 
 dataset_filename = mk_dataset_filename(opts, len(batches))
 print("Writing %d batches to %s...\n" % (len(batches), dataset_filename))
+
 with open(dataset_filename, 'wb') as f_dump:
     pickle.dump(batches, f_dump)

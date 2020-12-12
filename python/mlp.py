@@ -13,9 +13,12 @@
 # limitations under the License.
 # ==============================================================================
 
-import numpy as np
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+
 import tensorflow as tf
 from util import decode_transfer_fn
+
 
 def init_ws_bs(opts, name, d_in, d_outs):
     ws = []
@@ -30,6 +33,7 @@ def init_ws_bs(opts, name, d_in, d_outs):
             d = d_out
 
     return (ws, bs)
+
 
 class MLP(object):
     def __init__(self, opts, d_in, d_outs, name):

@@ -13,7 +13,9 @@
 # limitations under the License.
 # ==============================================================================
 
-import argparse
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+
 
 def add_neurosat_options(parser):
     parser.add_argument('--d', action='store', dest='d', type=int, default=128, help='Dimension of variable and clause embeddings')

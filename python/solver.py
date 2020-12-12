@@ -14,11 +14,14 @@
 # ==============================================================================
 
 import PyMiniSolvers.minisolvers as minisolvers
+import time
+
 
 def solve_sat(n_vars, iclauses):
     solver = minisolvers.MinisatSolver()
+    start_time = time.time()
     for i in range(n_vars): solver.new_var(dvar=True)
     for iclause in iclauses: solver.add_clause(iclause)
     is_sat = solver.solve()
     stats = solver.get_stats()
-    return is_sat, stats
+    return is_sat, time.time()-start_time, stats

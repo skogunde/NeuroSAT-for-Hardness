@@ -13,7 +13,10 @@
 # limitations under the License.
 # ==============================================================================
 
+import os
 import numpy as np
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+
 
 class ConfusionMatrix(object):
     def __init__(self):
@@ -58,6 +61,7 @@ class ConfusionMatrix(object):
 
     def __repr__(self):
         return self.__str__()
+
 
 class FloatConfusionMatrix(object):
     def __init__(self):
