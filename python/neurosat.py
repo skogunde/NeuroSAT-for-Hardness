@@ -14,6 +14,7 @@
 # ==============================================================================
 
 import os
+
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 import tensorflow as tf
@@ -52,8 +53,10 @@ class NeuroSAT(object):
             self.LC_msg = MLP(opts, opts.d, repeat_end(opts.d, opts.n_msg_layers, opts.d), name=("LC_msg"))
             self.CL_msg = MLP(opts, opts.d, repeat_end(opts.d, opts.n_msg_layers, opts.d), name=("CL_msg"))
 
-            self.L_update = tf.contrib.rnn.LayerNormBasicLSTMCell(self.opts.d, activation=decode_transfer_fn(opts.lstm_transfer_fn))
-            self.C_update = tf.contrib.rnn.LayerNormBasicLSTMCell(self.opts.d, activation=decode_transfer_fn(opts.lstm_transfer_fn))
+            self.L_update = tf.contrib.rnn.LayerNormBasicLSTMCell(self.opts.d,
+                                                                  activation=decode_transfer_fn(opts.lstm_transfer_fn))
+            self.C_update = tf.contrib.rnn.LayerNormBasicLSTMCell(self.opts.d,
+                                                                  activation=decode_transfer_fn(opts.lstm_transfer_fn))
 
             self.L_vote = MLP(opts, opts.d, repeat_end(opts.d, opts.n_vote_layers, 1), name=("L_vote"))
             self.vote_bias = tf.get_variable(name="vote_bias", shape=[], initializer=tf.zeros_initializer())
@@ -74,7 +77,7 @@ class NeuroSAT(object):
         return tf.less(i, self.opts.n_rounds)
 
     def flip(self, lits):
-        return tf.concat([lits[self.n_vars:(2*self.n_vars), :], lits[0:self.n_vars, :]], axis=0)
+        return tf.concat([lits[self.n_vars:(2 * self.n_vars), :], lits[0:self.n_vars, :]], axis=0)
 
     def while_body(self, i, L_state, C_state):
         LC_pre_msgs = self.LC_msg.forward(L_state.h)
@@ -89,7 +92,7 @@ class NeuroSAT(object):
         with tf.variable_scope('L_update') as scope:
             _, L_state = self.L_update(inputs=tf.concat([CL_msgs, self.flip(L_state.h)], axis=1), state=L_state)
 
-        return i+1, L_state, C_state
+        return i + 1, L_state, C_state
 
     def pass_messages(self):
         with tf.name_scope('pass_messages') as scope:
@@ -108,8 +111,9 @@ class NeuroSAT(object):
 
     def compute_logits(self):
         with tf.name_scope('compute_logits') as scope:
-            self.all_votes = self.L_vote.forward(self.final_lits) # n_lits x 1
-            self.all_votes_join = tf.concat([self.all_votes[0:self.n_vars], self.all_votes[self.n_vars:self.n_lits]], axis=1) # n_vars x 2
+            self.all_votes = self.L_vote.forward(self.final_lits)  # n_lits x 1
+            self.all_votes_join = tf.concat([self.all_votes[0:self.n_vars], self.all_votes[self.n_vars:self.n_lits]],
+                                            axis=1)  # n_vars x 2
 
             self.all_votes_batched = tf.reshape(self.all_votes_join, [self.n_batches, self.n_vars_per_batch, 2])
             self.logits = self.final_reducer(self.all_votes_batched) + self.vote_bias
@@ -133,9 +137,11 @@ class NeuroSAT(object):
         if opts.lr_decay_type == "no_decay":
             self.learning_rate = tf.constant(opts.lr_start)
         elif opts.lr_decay_type == "poly":
-            self.learning_rate = tf.train.polynomial_decay(opts.lr_start, self.global_step, opts.lr_decay_steps, opts.lr_end, power=opts.lr_power)
+            self.learning_rate = tf.train.polynomial_decay(opts.lr_start, self.global_step, opts.lr_decay_steps,
+                                                           opts.lr_end, power=opts.lr_power)
         elif opts.lr_decay_type == "exp":
-            self.learning_rate = tf.train.exponential_decay(opts.lr_start, self.global_step, opts.lr_decay_steps, opts.lr_decay, staircase=False)
+            self.learning_rate = tf.train.exponential_decay(opts.lr_start, self.global_step, opts.lr_decay_steps,
+                                                            opts.lr_decay, staircase=False)
         else:
             raise Exception("lr_decay_type must be 'no_decay', 'poly' or 'exp'")
 
@@ -143,7 +149,8 @@ class NeuroSAT(object):
 
         gradients, variables = zip(*optimizer.compute_gradients(self.cost))
         gradients, _ = tf.clip_by_global_norm(gradients, self.opts.clip_val)
-        self.apply_gradients = optimizer.apply_gradients(zip(gradients, variables), name='apply_gradients', global_step=self.global_step)
+        self.apply_gradients = optimizer.apply_gradients(zip(gradients, variables), name='apply_gradients',
+                                                         global_step=self.global_step)
 
     def initialize_vars(self):
         tf.global_variables_initializer().run(session=self.sess)
@@ -174,17 +181,11 @@ class NeuroSAT(object):
         self.saver.restore(self.sess, snapshot)
 
     def build_feed_dict(self, problem):
-        d = {}
-        d[self.n_vars] = problem.n_vars
-        d[self.n_lits] = problem.n_lits
-        d[self.n_clauses] = problem.n_clauses
-
-        d[self.L_unpack] =  tf.SparseTensorValue(indices=problem.L_unpack_indices,
-                                                 values=np.ones(problem.L_unpack_indices.shape[0]),
-                                                 dense_shape=[problem.n_lits, problem.n_clauses])
-
-        d[self.is_time] = problem.is_time
-        return d
+        return {self.n_vars: problem.n_vars, self.n_lits: problem.n_lits, self.n_clauses: problem.n_clauses,
+                self.L_unpack: tf.SparseTensorValue(indices=problem.L_unpack_indices,
+                                                    values=np.ones(problem.L_unpack_indices.shape[0]),
+                                                    dense_shape=[problem.n_lits, problem.n_clauses]),
+                self.is_time: problem.is_time}
 
     def train_epoch(self, epoch):
         if self.train_problems_loader is None:
@@ -209,7 +210,7 @@ class NeuroSAT(object):
         learning_rate = self.sess.run(self.learning_rate)
         self.save(epoch)
 
-        return (train_filename, epoch_train_cost, epoch_train_mat, learning_rate, epoch_end - epoch_start)
+        return train_filename, epoch_train_cost, epoch_train_mat, learning_rate, epoch_end - epoch_start
 
     def test(self, test_data_dir):
         test_problems_loader = init_problems_loader(test_data_dir)
@@ -236,14 +237,17 @@ class NeuroSAT(object):
 
     def find_solutions(self, problem):
         def flip_vlit(vlit):
-            if vlit < problem.n_vars: return vlit + problem.n_vars
-            else: return vlit - problem.n_vars
+            if vlit < problem.n_vars:
+                return vlit + problem.n_vars
+            else:
+                return vlit - problem.n_vars
 
         n_batches = len(problem.is_time)
         n_vars_per_batch = problem.n_vars // n_batches
 
         d = self.build_feed_dict(problem)
-        all_votes, final_lits, logits, costs = self.sess.run([self.all_votes, self.final_lits, self.logits, self.predict_costs], feed_dict=d)
+        all_votes, final_lits, logits, costs = self.sess.run(
+            [self.all_votes, self.final_lits, self.logits, self.predict_costs], feed_dict=d)
 
         solutions = []
         for batch in range(len(problem.is_time)):
@@ -251,14 +255,19 @@ class NeuroSAT(object):
             decode_cheap_B = (lambda vlit: not decode_cheap_A(vlit))
 
             def reify(phi):
-                xs = list(zip([phi(vlit) for vlit in range(batch * n_vars_per_batch, (batch+1) * n_vars_per_batch)],
-                              [phi(flip_vlit(vlit)) for vlit in range(batch * n_vars_per_batch, (batch+1) * n_vars_per_batch)]))
+                xs = list(zip([phi(vlit) for vlit in range(batch * n_vars_per_batch, (batch + 1) * n_vars_per_batch)],
+                              [phi(flip_vlit(vlit)) for vlit in
+                               range(batch * n_vars_per_batch, (batch + 1) * n_vars_per_batch)]))
+
                 def one_of(a, b): return (a and (not b)) or (b and (not a))
-                assert(all([one_of(x[0], x[1]) for x in xs]))
+
+                assert (all([one_of(x[0], x[1]) for x in xs]))
                 return [x[0] for x in xs]
 
-            if self.solves(problem, batch, decode_cheap_A): solutions.append(reify(decode_cheap_A))
-            elif self.solves(problem, batch, decode_cheap_B): solutions.append(reify(decode_cheap_B))
+            if self.solves(problem, batch, decode_cheap_A):
+                solutions.append(reify(decode_cheap_A))
+            elif self.solves(problem, batch, decode_cheap_B):
+                solutions.append(reify(decode_cheap_B))
             else:
 
                 L = np.reshape(final_lits, [2 * n_batches, n_vars_per_batch, self.opts.d])
@@ -269,18 +278,23 @@ class NeuroSAT(object):
                 scores = distances * distances
 
                 def proj_vlit_flit(vlit):
-                    if vlit < problem.n_vars: return vlit - batch * n_vars_per_batch
-                    else:                     return ((vlit - problem.n_vars) - batch * n_vars_per_batch) + n_vars_per_batch
+                    if vlit < problem.n_vars:
+                        return vlit - batch * n_vars_per_batch
+                    else:
+                        return ((vlit - problem.n_vars) - batch * n_vars_per_batch) + n_vars_per_batch
 
                 def decode_kmeans_A(vlit):
                     return scores[proj_vlit_flit(vlit), 0] + scores[proj_vlit_flit(flip_vlit(vlit)), 1] > \
-                        scores[proj_vlit_flit(vlit), 1] + scores[proj_vlit_flit(flip_vlit(vlit)), 0]
+                           scores[proj_vlit_flit(vlit), 1] + scores[proj_vlit_flit(flip_vlit(vlit)), 0]
 
                 decode_kmeans_B = (lambda vlit: not decode_kmeans_A(vlit))
 
-                if self.solves(problem, batch, decode_kmeans_A): solutions.append(reify(decode_kmeans_A))
-                elif self.solves(problem, batch, decode_kmeans_B): solutions.append(reify(decode_kmeans_B))
-                else: solutions.append(None)
+                if self.solves(problem, batch, decode_kmeans_A):
+                    solutions.append(reify(decode_kmeans_A))
+                elif self.solves(problem, batch, decode_kmeans_B):
+                    solutions.append(reify(decode_kmeans_B))
+                else:
+                    solutions.append(None)
 
         return solutions
 
@@ -308,7 +322,7 @@ class NeuroSAT(object):
 
             if not current_clause_satisfied:
                 vlit = problem.L_unpack_indices[cell, 0]
-                #print("[%d] %d" % (batch, vlit))
+                # print("[%d] %d" % (batch, vlit))
                 if phi(vlit):
                     current_clause_satisfied = True
 

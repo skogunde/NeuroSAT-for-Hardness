@@ -2,8 +2,8 @@
 import pickle
 
 # get train and test file names
-train_fname = "data/train/sr5/data_dir=grp{1..2}_npb=60000_nb=5.pkl"
-test_fname = "data/test/sr5/data_dir=grp{1..2}_npb=60000_nb=5.pkl"
+train_fname = "data/train/sr5/data_dir=grp{1..2}_npb=60000_nb=8.pkl"
+test_fname = "data/test/sr5/data_dir=grp{1..2}_npb=60000_nb=9.pkl"
 
 # open files
 with open(train_fname, "rb") as f:
