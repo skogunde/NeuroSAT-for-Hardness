@@ -2,8 +2,8 @@
 import pickle
 
 # get train and test file names
-train_fname = "data/train/sr5/data_dir=grp{1..2}_npb=60000_nb=8.pkl"
-test_fname = "data/test/sr5/data_dir=grp{1..2}_npb=60000_nb=9.pkl"
+train_fname = "data/train/sr5/data_dir=grp{1..2}_npb=60000_nb=10.pkl"
+test_fname = "data/test/sr5/data_dir=grp{1..2}_npb=60000_nb=8.pkl"
 
 # open files
 with open(train_fname, "rb") as f:
@@ -28,8 +28,13 @@ print(f"statistics for this data: min solver time is {min}s and max time is {max
 
 # update all times to (current_time - min)/(max - min)
 for problem in train_problems:
+    print(f"old label: {problem.is_time}")
+    new_times = []
     for time in problem.is_time:
-        time = (time-min)/range
+        new_time = (time-min)/range
+        new_times.append(new_time)
+    problem.is_time = new_times
+    print(f"new label: {problem.is_time}")
 
 for problem in test_problems:
     for time in problem.is_time:

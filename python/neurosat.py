@@ -119,9 +119,12 @@ class NeuroSAT(object):
             self.logits = self.final_reducer(self.all_votes_batched) + self.vote_bias
 
     def compute_cost(self):
-        self.predict_costs = tf.nn.sigmoid_cross_entropy_with_logits(logits=self.logits, labels=self.is_time)
-        self.predict_cost = tf.reduce_mean(self.predict_costs)
+        print(self.logits)
+        self.predict_costs = tf.keras.losses.MSE(self.logits, self.is_time)
+        self.predict_cost = tf.reduce_sum(self.predict_costs)
+        #self.predict_costs = tf.nn.l2_loss(self.logits, labels=self.is_time)
 
+        print(f"predict costs: {self.predict_costs}, predict cost: {self.predict_cost}")
         with tf.name_scope('l2') as scope:
             l2_cost = tf.zeros([])
             for var in tf.trainable_variables():
@@ -200,6 +203,7 @@ class NeuroSAT(object):
         for problem in train_problems:
             d = self.build_feed_dict(problem)
             _, logits, cost = self.sess.run([self.apply_gradients, self.logits, self.cost], feed_dict=d)
+            print(f"logits: {logits}, time: {problem.is_time}, cost: {cost}")
             epoch_train_cost += cost
             epoch_train_mat.update(problem.is_time, logits > 0)
 
